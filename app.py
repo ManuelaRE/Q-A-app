@@ -71,20 +71,48 @@ def question():
     user = get_current_user()
     return render_template('question.html', user=user)
 
-@app.route('/answer')
-def answer():
+@app.route('/answer/<question_id>', methods=['GET', 'POST'])
+def answer(question_id):
     user = get_current_user()
-    return render_template('answer.html', user=user)
+    db = get_db()
 
-@app.route('/ask')
+    if request.method == 'POST':
+        db.execute('update questions set answer_text = ? where id = ?', [request.form['answer'], question_id])
+        db.commit()
+
+        return redirect(url_for('unanswered'))
+
+    question_cur = db.execute('select id, question_text from questions where id = ?', [question_id])
+    question = question_cur.fetchone()
+
+    return render_template('answer.html', user=user, question=question)
+
+@app.route('/ask', methods=['GET', 'POST'])
 def ask():
     user = get_current_user()
-    return render_template('ask.html', user=user)
+    db = get_db()
+    if request.method == 'POST':
+        db.execute('insert into questions (question_text, asked_by_id, expert_id) values (?, ?, ?)', [request.form['question'], user['id'], request.form['expert']])
+        db.commit()
+
+        return redirect(url_for('index'))
+    
+    expert_cur = db.execute('select id, name from users where expert = 1')
+    expert_results = expert_cur.fetchall()
+
+    return render_template('ask.html', user=user, experts=expert_results)
 
 @app.route('/unanswered')
 def unanswered():
     user = get_current_user()
-    return render_template('unanswered.html', user=user)
+    db = get_db()
+
+    questions_cur = db.execute('''select questions.id, questions.question_text, users.name 
+                                from questions 
+                                join users on users.id = questions.asked_by_id 
+                                where questions.answer_text is null and questions.expert_id is ?''', [user['id']])
+    questions = questions_cur.fetchall()
+    return render_template('unanswered.html', user=user, questions=questions)
 
 
 @app.route('/users')
