@@ -154,9 +154,9 @@ def unanswered():
     db = get_db()
 
     db.execute('''select questions.id, questions.question_text, usersfile.name 
-                from questions 
-                join usersfile on usersfile.id = questions.asked_by_id 
-                where questions.answer_text is null and questions.expert_id is %s''', (user['id'], ))
+            from questions 
+            join usersfile on usersfile.id = questions.asked_by_id 
+            where questions.answer_text is null and questions.expert_id = %s''', (user['id'], ))
     questions = db.fetchall()
     return render_template('unanswered.html', user=user, questions=questions)
 
